@@ -12,12 +12,14 @@ let pieceDragged = false
 let homeScreen = true
 let singlePlayerGame = false
 let multiPlayerGame = false
+let myMPColour
 let computerGame = false
 let singlePlayerButton
 let multiPlayerButton
 let computerGameButton
 let newGameButton
 let resignButton
+let socket
 
 async function setup() {
     let cnv = createCanvas(windowWidth, windowHeight)
@@ -58,6 +60,17 @@ function startSinglePlayerGame() {
 
 function startMultiPlayerGame() {
     multiPlayerGame = true
+    socket = io()
+    socket.on("colourAssign", function (colour) {
+        myMPColour = colour;
+    })
+    socket.on("makeMove", function (move){
+        console.log("recieved move command:", move)
+        mainGameBoard.move_piece(move[0], move[1], move[2])
+    })
+    socket.on("moveInvalid", function(){
+        console.log("An error has occured, as this move has been seen as invalid by the server")
+    })
     initGame()
 }
 
@@ -89,7 +102,7 @@ function initGame() {
 }
 
 function resignPlayer() {
-    if (mainGameBoard.whitesTurn == 1) {
+    if (mainGameBoard.whitesTurn == 1 && singlePlayerGame == true) {
         mainGameBoard.boardOutcome = 7
     }
     else {
@@ -107,7 +120,7 @@ function draw() {
 
         if (askPromotion == true) {
             let colourOffsetDown = 0
-            if (mainGameBoard.whitesTurn == 1) {
+            if (mainGameBoard.whitesTurn == 1 && singlePlayerGame == true || multiPlayerGame == true && myMPColour == 1) {
                 colourOffsetDown = 169
             }
             fill(0, 0, 0, 128)
@@ -171,20 +184,20 @@ function mousePressed() {
         let tempBoardX = floor((mouseX - XOFFSET) / SQSIZE)
         let tempBoardY = floor((mouseY - YOFFSET) / SQSIZE)
         if (askPromotion == false && mainGameBoard.boardOutcome == 0) {
-            if (mainGameBoard.whitesTurn == 1) {
+            if (mainGameBoard.whitesTurn == 1 && singlePlayerGame == true || multiPlayerGame == true && myMPColour == 1) {
                 tempBoardX = 7 - tempBoardX
                 tempBoardY = 7 - tempBoardY
             }
             if (tempBoardY >= 0 && tempBoardY < BOARDSIZE && tempBoardX >= 0 && tempBoardX < BOARDSIZE) {
                 let squaresToCheck
-                if (mainGameBoard.whitesTurn == 0) {
+                if (mainGameBoard.whitesTurn == 0 && singlePlayerGame == true || multiPlayerGame == true && myMPColour == 0) {
                     squaresToCheck = mainGameBoard.whiteSWP
                 }
                 else {
                     squaresToCheck = mainGameBoard.blackSWP
                 }
                 for (squareToCheck of squaresToCheck) {
-                    if (squareToCheck[BOARDROW] == tempBoardY && squareToCheck[BOARDCOLUMN] == tempBoardX) {
+                    if (squareToCheck[BOARDROW] == tempBoardY && squareToCheck[BOARDCOLUMN] == tempBoardX && (multiPlayerGame == false || mainGameBoard.whitesTurn == myMPColour)) {
                         pieceSelected = [tempBoardY, tempBoardX]
                         pieceDragged = true
                     }
@@ -203,7 +216,7 @@ function mouseReleased() {
         pieceDragged = false
         let tempBoardX = floor((mouseX - XOFFSET) / SQSIZE)
         let tempBoardY = floor((mouseY - YOFFSET) / SQSIZE)
-        if (mainGameBoard.whitesTurn == 1) {
+        if (mainGameBoard.whitesTurn == 1 && singlePlayerGame == true || multiPlayerGame == true && myMPColour == 1) {
             tempBoardX = 7 - tempBoardX
             tempBoardY = 7 - tempBoardY
         }
@@ -214,6 +227,9 @@ function mouseReleased() {
                 pieceDropped = [tempBoardY, tempBoardX]
                 if (!(mainGameBoard.board[pieceSelected[BOARDROW]][pieceSelected[BOARDCOLUMN]][1] == 'P' && (tempBoardY == 0 || tempBoardY == 7))) {
                     mainGameBoard.move_piece(pieceSelected, pieceDropped, 0)
+                    if (multiPlayerGame){
+                        socket.emit("makeMove", [pieceSelected, pieceDropped, 0])
+                    }
                     pieceSelected = []
                 }
                 else {
@@ -225,41 +241,65 @@ function mouseReleased() {
             if (tempBoardY == 3 || tempBoardY == 4) {
                 switch (tempBoardX) {
                     case 0: case 1:
-                        if (mainGameBoard.whitesTurn == 0) {
+                        if (mainGameBoard.whitesTurn == 0 && singlePlayerGame == true || multiPlayerGame == true && myMPColour == 0) {
                             mainGameBoard.move_piece(pieceSelected, pieceDropped, 'Q')
+                            if (multiPlayerGame) {
+                                socket.emit("makeMove", [pieceSelected, pieceDropped, 'Q'])
+                            }
                         }
                         else {
                             mainGameBoard.move_piece(pieceSelected, pieceDropped, 'R')
+                            if (multiPlayerGame) {
+                                socket.emit("makeMove", [pieceSelected, pieceDropped, 'R'])
+                            }
                         }
                         askPromotion = false
                         pieceSelected = []
                         break;
                     case 2: case 3:
-                        if (mainGameBoard.whitesTurn == 0) {
+                        if (mainGameBoard.whitesTurn == 0 && singlePlayerGame == true || multiPlayerGame == true && myMPColour == 0) {
                             mainGameBoard.move_piece(pieceSelected, pieceDropped, 'B')
+                            if (multiPlayerGame) {
+                                socket.emit("makeMove", [pieceSelected, pieceDropped, 'B'])
+                            }
                         }
                         else {
                             mainGameBoard.move_piece(pieceSelected, pieceDropped, 'N')
+                            if (multiPlayerGame) {
+                                socket.emit("makeMove", [pieceSelected, pieceDropped, 'N'])
+                            }
                         }
                         askPromotion = false
                         pieceSelected = []
                         break;
                     case 4: case 5:
-                        if (mainGameBoard.whitesTurn == 0) {
+                        if (mainGameBoard.whitesTurn == 0 && singlePlayerGame == true || multiPlayerGame == true && myMPColour == 0) {
                             mainGameBoard.move_piece(pieceSelected, pieceDropped, 'N')
+                            if (multiPlayerGame) {
+                                socket.emit("makeMove", [pieceSelected, pieceDropped, 'N'])
+                            }
                         }
                         else {
                             mainGameBoard.move_piece(pieceSelected, pieceDropped, 'B')
+                            if (multiPlayerGame) {
+                                socket.emit("makeMove", [pieceSelected, pieceDropped, 'B'])
+                            }
                         }
                         askPromotion = false
                         pieceSelected = []
                         break;
                     case 6: case 7:
-                        if (mainGameBoard.whitesTurn == 0) {
+                        if (mainGameBoard.whitesTurn == 0 && singlePlayerGame == true || multiPlayerGame == true && myMPColour == 0) {
                             mainGameBoard.move_piece(pieceSelected, pieceDropped, 'R')
+                            if (multiPlayerGame) {
+                                socket.emit("makeMove", [pieceSelected, pieceDropped, 'R'])
+                            }
                         }
                         else {
                             mainGameBoard.move_piece(pieceSelected, pieceDropped, 'Q')
+                            if (multiPlayerGame) {
+                                socket.emit("makeMove", [pieceSelected, pieceDropped, 'Q'])
+                            }
                         }
                         askPromotion = false
                         pieceSelected = []
@@ -297,7 +337,7 @@ function draw_pieces_options_and_selected_square() {
                 stroke('red')
                 strokeWeight(3)
                 //draw a red rectangle
-                if (mainGameBoard.whitesTurn == 0) {
+                if (mainGameBoard.whitesTurn == 0 && singlePlayerGame == true || multiPlayerGame == true && myMPColour == 0) {
                     rect(XOFFSET + pieceSelected[BOARDCOLUMN] * SQSIZE, YOFFSET + pieceSelected[BOARDROW] * SQSIZE, SQSIZE, SQSIZE)
                 }
                 else {
@@ -337,7 +377,7 @@ function draw_pieces_options_and_selected_square() {
                 //if the piece isnt selected or being dragged
                 if (!pieceSelectedTrue || !pieceDragged) {
                     //draw the piece on the board
-                    if (mainGameBoard.whitesTurn == 0) {
+                    if (mainGameBoard.whitesTurn == 0 && singlePlayerGame == true || multiPlayerGame == true && myMPColour == 0) {
                         image(chessSpriteSheet, XOFFSET + column * SQSIZE, YOFFSET + row * SQSIZE, SQSIZE, SQSIZE, (pieceOfsettAcross * 169) - 16, colourOffsetDown, 169, 136)
                     }
                     else {
@@ -375,7 +415,7 @@ function draw_pieces_options_and_selected_square() {
     for (squareToDropPieceAt of moveSquaresOfSelectedPiece) { //iterate through the end squares and draw them on the board
         fill(0, 0, 0, 100) //transparent black
         strokeWeight(0)
-        if (mainGameBoard.whitesTurn == 0) {
+        if (mainGameBoard.whitesTurn == 0 || multiPlayerGame == true && myMPColour == 0) {
             circle(XOFFSET + squareToDropPieceAt[BOARDCOLUMN] * SQSIZE + SQSIZE / 2, YOFFSET + squareToDropPieceAt[BOARDROW] * SQSIZE + SQSIZE / 2, SQSIZE / 5)
         }
         else {

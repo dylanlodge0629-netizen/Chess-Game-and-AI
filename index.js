@@ -7,8 +7,20 @@ const web = exp.listen(3000, function () {
 });
 const io = socketio(web);
 
+let startingBoard = [
+    [['b', 'R'], ['b', 'N'], ['b', 'B'], ['b', 'Q'], ['b', 'K'], ['b', 'B'], ['b', 'N'], ['b', 'R']],
+    [['b', 'P'], ['b', 'P'], ['b', 'P'], ['b', 'P'], ['b', 'P'], ['b', 'P'], ['b', 'P'], ['b', 'P']],
+    [[], [], [], [], [], [], [], []],
+    [[], [], [], [], [], [], [], []],
+    [[], [], [], [], [], [], [], []],
+    [[], [], [], [], [], [], [], []],
+    [['w', 'P'], ['w', 'P'], ['w', 'P'], ['w', 'P'], ['w', 'P'], ['w', 'P'], ['w', 'P'], ['w', 'P']],
+    [['w', 'R'], ['w', 'N'], ['w', 'B'], ['w', 'Q'], ['w', 'K'], ['w', 'B'], ['w', 'N'], ['w', 'R']],
+]
 let playerCount = 0
 let gameCount = 0
+let colours = ["w", "b"]
+let games = []
 
 io.on("connection", function (socket) {
     console.log("connected to " + socket.id); // a new connection has been created
@@ -16,21 +28,40 @@ io.on("connection", function (socket) {
     socket.join(myGame)
     let myColour = colours[playerCount % 2] // assign O/X to player and advance playerCount
     let myBoolColour = playerCount % 2
+    socket.emit("colourAssign", myBoolColour)
+    console.log("emmited:", myColour)
+    if (playerCount % 2 == 0){
+        games.push([new Board(startingBoard)]);
+    }
     if (playerCount % 2 == 1) {
-        games.push([structuredClone(timer), 0]);
+        
         gameCount++
-        setInterval(change_timer, 1000)
+        //setInterval(change_timer, 1000)
     }
     playerCount++
     function change_timer() {
-        games[myGame][0][games[myGame][1]]--
+        //games[myGame][0][games[myGame][1]]--
         //console.log(myTurn)
         io.to(myGame).emit("timersUpdate", games[myGame][0]);
     }
-    socket.on("toggle", function () {
-        if (games[myGame][1] == myBoolColour) {
-            games[myGame][1] = 1 - games[myGame][1]
+    // socket.on("toggle", function () {
+    //     if (games[myGame][1] == myBoolColour) {
+    //         games[myGame][1] = 1 - games[myGame][1]
+    //     }
+    // })
+    socket.on("makeMove", function (move) {
+        let moveValid = false
+        if (!square_out_of_bounds(move[0]) && !square_out_of_bounds(move[1])){
+            let boardStateBefore = structuredClone(games[myGame][0].board)
+            games[myGame][0].move_piece(move[0], move[1], move[2])
+            if (JSON.stringify(boardStateBefore) !== JSON.stringify(games[myGame][0].board)){
+                moveValid = true
+            }
         }
+        if (moveValid)
+            socket.broadcast.to(myGame).emit("makeMove", move)
+        else 
+            socket.emit("moveInvalid")
     })
 });
 
@@ -1220,4 +1251,9 @@ function add_squares(square1, square2) {
 }
 function squares_are_equal(square1, square2) {
     return (square1[BOARDROW] == square2[BOARDROW] && square1[BOARDCOLUMN] == square2[BOARDCOLUMN])
+}
+
+function square_out_of_bounds(finishingSquare) {
+    return (finishingSquare[BOARDCOLUMN] < 0 || finishingSquare[BOARDCOLUMN] >= BOARDSIZE ||
+        finishingSquare[BOARDROW] < 0 || finishingSquare[BOARDROW] >= BOARDSIZE)
 }
