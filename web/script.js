@@ -13,6 +13,8 @@ let homeScreen = true
 let singlePlayerGame = false
 let multiPlayerGame = false
 let myMPColour
+let whitesTimeLeft
+let blacksTimeLeft
 let computerGame = false
 let singlePlayerButton
 let multiPlayerButton
@@ -34,7 +36,6 @@ async function setup() {
 function go_to_home_screen() {
     homeScreen = true
     singlePlayerGame = false
-    multiPlayerGame = false
     computerGame = false
     singlePlayerButton = createButton("Singleplayer Game")
     singlePlayerButton.position(windowWidth / 2 - 78, windowHeight / 2 - 50)
@@ -51,6 +52,10 @@ function go_to_home_screen() {
     if (resignButton) {
         resignButton.hide()
     }
+    if (multiPlayerGame) {
+        socket.disconnect()
+    }
+    multiPlayerGame = false
 }
 
 function startSinglePlayerGame() {
@@ -70,6 +75,28 @@ function startMultiPlayerGame() {
     })
     socket.on("moveInvalid", function(){
         console.log("An error has occured, as this move has been seen as invalid by the server")
+    })
+    socket.on("opponentResign", function () {
+        if (myMPColour == 0){
+            mainGameBoard.boardOutcome = 7
+        }
+        else {
+            mainGameBoard.boardOutcome = 8
+        }
+    })
+    socket.on("timersUpdate", function (d) {
+        let wseconds = (String(Math.floor((d[0] % 60) / 10)) + String((d[0] % 60) % 10))
+        let wminutes = Math.floor(d[0] / 60)
+        whitesTimeLeft = (wminutes + ":" + wseconds)
+        let seconds = (String(Math.floor((d[1] % 60) / 10)) + String((d[1] % 60) % 10))
+        let minutes = Math.floor(d[1] / 60)
+        blacksTimeLeft = (minutes + ":" + seconds)
+    })
+    socket.on("whiteTimerLoss", function () {
+        mainGameBoard.boardOutcome = 10
+    })
+    socket.on("blackTimerLoss", function () {
+        mainGameBoard.boardOutcome = 9
     })
     initGame()
 }
@@ -107,6 +134,9 @@ function resignPlayer() {
     }
     else {
         mainGameBoard.boardOutcome = 8
+    }
+    if (multiPlayerGame){
+        socket.disconnect()
     }
 }
 
@@ -168,12 +198,56 @@ function draw() {
                     winner = "Black wins!"
                     reason = "by resignation"
                     break;
+                case 9:
+                    winner = "White wins!"
+                    reason = "on time"
+                    break;
+                case 10:
+                    winner = "Black wins!"
+                    reason = "on time"
+                    break;
             }
             fill(255)
             textSize(50)
             text(winner, XOFFSET + 3 * SQSIZE, YOFFSET + 3 * SQSIZE)
             textSize(25)
             text(reason, XOFFSET + 2.5 * SQSIZE, YOFFSET + 3.5 * SQSIZE, 3 * SQSIZE)
+        }
+
+        if (multiPlayerGame == true){
+            textSize(100)
+            if (myMPColour == 0){
+                if (mainGameBoard.whitesTurn == 0){
+                    fill(0x8E, 0xAA, 0xDB)
+                }
+                else {
+                    fill(0)
+                }
+                text(whitesTimeLeft, BOARDSIZE * SQSIZE + XOFFSET * 2, BOARDSIZE * SQSIZE - YOFFSET)
+                if (mainGameBoard.whitesTurn == 1) {
+                    fill(0x8E, 0xAA, 0xDB)
+                }
+                else {
+                    fill(0)
+                }
+                text(blacksTimeLeft, BOARDSIZE * SQSIZE + XOFFSET * 2, YOFFSET)
+            }
+            else {
+                if (mainGameBoard.whitesTurn == 0) {
+                    fill(0x8E, 0xAA, 0xDB)
+                }
+                else {
+                    fill(0)
+                }
+                text(whitesTimeLeft, BOARDSIZE * SQSIZE + XOFFSET * 2, YOFFSET)
+                if (mainGameBoard.whitesTurn == 1) {
+                    fill(0x8E, 0xAA, 0xDB)
+                }
+                else {
+                    fill(0)
+                }
+                text(blacksTimeLeft, BOARDSIZE * SQSIZE + XOFFSET * 2, BOARDSIZE * SQSIZE - YOFFSET)
+            }
         }
     }
 }

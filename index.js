@@ -21,6 +21,7 @@ let playerCount = 0
 let gameCount = 0
 let colours = ["w", "b"]
 let games = []
+let timer = [15, 15] // 2 5 minute timers, 1 for black and one for white
 
 io.on("connection", function (socket) {
     console.log("connected to " + socket.id); // a new connection has been created
@@ -31,24 +32,28 @@ io.on("connection", function (socket) {
     socket.emit("colourAssign", myBoolColour)
     console.log("emmited:", myColour)
     if (playerCount % 2 == 0){
-        games.push([new Board(startingBoard)]);
+        games.push([new Board(startingBoard), structuredClone(timer)]);
     }
     if (playerCount % 2 == 1) {
         
         gameCount++
-        //setInterval(change_timer, 1000)
+        var timerCounter = setInterval(update_timer, 1000)
     }
     playerCount++
-    function change_timer() {
-        //games[myGame][0][games[myGame][1]]--
-        //console.log(myTurn)
-        io.to(myGame).emit("timersUpdate", games[myGame][0]);
+    function update_timer() {
+        if (games[myGame][0].boardOutcome == 0){
+            games[myGame][1][games[myGame][0].whitesTurn]--
+            io.to(myGame).emit("timersUpdate", games[myGame][1]);
+            if (games[myGame][1][0] <= 0){
+                io.to(myGame).emit("whiteTimerLoss")
+                clearInterval(timerCounter)
+            }
+            if (games[myGame][1][1] <= 0) {
+                io.to(myGame).emit("blackTimerLoss")
+                clearInterval(timerCounter)
+            }
+        }
     }
-    // socket.on("toggle", function () {
-    //     if (games[myGame][1] == myBoolColour) {
-    //         games[myGame][1] = 1 - games[myGame][1]
-    //     }
-    // })
     socket.on("makeMove", function (move) {
         let moveValid = false
         if (!square_out_of_bounds(move[0]) && !square_out_of_bounds(move[1])){
@@ -62,6 +67,9 @@ io.on("connection", function (socket) {
             socket.broadcast.to(myGame).emit("makeMove", move)
         else 
             socket.emit("moveInvalid")
+    })
+    socket.on('disconnect', function () {
+        socket.broadcast.to(myGame).emit("opponentResign")
     })
 });
 
