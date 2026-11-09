@@ -13,6 +13,7 @@ let homeScreen = true
 let singlePlayerGame = false
 let multiPlayerGame = false
 let myMPColour
+let multiPlayerGameStarted = false
 let whitesTimeLeft
 let blacksTimeLeft
 let computerGame = false
@@ -54,6 +55,9 @@ function go_to_home_screen() {
     }
     if (multiPlayerGame) {
         socket.disconnect()
+        whitesTimeLeft = undefined
+        blacksTimeLeft = undefined
+        multiPlayerGameStarted = false
     }
     multiPlayerGame = false
 }
@@ -66,8 +70,12 @@ function startSinglePlayerGame() {
 function startMultiPlayerGame() {
     multiPlayerGame = true
     socket = io()
+    console.log(socket)
     socket.on("colourAssign", function (colour) {
         myMPColour = colour;
+    })
+    socket.on("Start Game", function(){
+        multiPlayerGameStarted = true
     })
     socket.on("makeMove", function (move){
         console.log("recieved move command:", move)
@@ -129,20 +137,17 @@ function initGame() {
 }
 
 function resignPlayer() {
-    if (mainGameBoard.whitesTurn == 1 && singlePlayerGame == true) {
+    if (mainGameBoard.whitesTurn == 1 && singlePlayerGame == true && mainGameBoard.boardOutcome == 0) {
         mainGameBoard.boardOutcome = 7
     }
     else {
         mainGameBoard.boardOutcome = 8
     }
-    if (multiPlayerGame){
-        socket.disconnect()
-    }
 }
 
 function draw() {
     background('white');
-    if (homeScreen == false) {
+    if (singlePlayerGame == true || multiPlayerGame == true && multiPlayerGameStarted == true || computerGame == true) {
 
         draw_checkered_pattern();
 
@@ -212,6 +217,9 @@ function draw() {
             text(winner, XOFFSET + 3 * SQSIZE, YOFFSET + 3 * SQSIZE)
             textSize(25)
             text(reason, XOFFSET + 2.5 * SQSIZE, YOFFSET + 3.5 * SQSIZE, 3 * SQSIZE)
+            if (multiPlayerGame == true){
+                socket.disconnect()
+            }
         }
 
         if (multiPlayerGame == true){
@@ -249,6 +257,9 @@ function draw() {
                 text(blacksTimeLeft, BOARDSIZE * SQSIZE + XOFFSET * 2, BOARDSIZE * SQSIZE - YOFFSET)
             }
         }
+    }
+    else if (multiPlayerGame == true && multiPlayerGameStarted == false){
+        text("waiting for opponent...", 0, 0)
     }
 }
 

@@ -21,24 +21,32 @@ let playerCount = 0
 let gameCount = 0
 let colours = ["w", "b"]
 let games = []
-let timer = [15, 15] // 2 5 minute timers, 1 for black and one for white
+let timer = [300, 300] // 2 5 minute timers, 1 for black and one for white
+let gameActive = true
 
 io.on("connection", function (socket) {
     console.log("connected to " + socket.id); // a new connection has been created
     let myGame = gameCount
     socket.join(myGame)
+    if (playerCount % 2 == 0){
+        games.push([new Board(startingBoard), structuredClone(timer), gameActive]);
+    }
+    if (playerCount % 2 == 1) {
+        
+        if (games[myGame][2] == false){
+            playerCount--
+            games[gameCount] = [new Board(startingBoard), structuredClone(timer), gameActive]
+        }
+        else{
+            gameCount++
+            var timerCounter = setInterval(update_timer, 1000)
+            io.to(myGame).emit("Start Game")
+        }
+    }
     let myColour = colours[playerCount % 2] // assign O/X to player and advance playerCount
     let myBoolColour = playerCount % 2
     socket.emit("colourAssign", myBoolColour)
     console.log("emmited:", myColour)
-    if (playerCount % 2 == 0){
-        games.push([new Board(startingBoard), structuredClone(timer)]);
-    }
-    if (playerCount % 2 == 1) {
-        
-        gameCount++
-        var timerCounter = setInterval(update_timer, 1000)
-    }
     playerCount++
     function update_timer() {
         if (games[myGame][0].boardOutcome == 0){
@@ -47,10 +55,12 @@ io.on("connection", function (socket) {
             if (games[myGame][1][0] <= 0){
                 io.to(myGame).emit("whiteTimerLoss")
                 clearInterval(timerCounter)
+                games[myGame][0].boardOutcome = 9
             }
             if (games[myGame][1][1] <= 0) {
                 io.to(myGame).emit("blackTimerLoss")
                 clearInterval(timerCounter)
+                games[myGame][0].boardOutcome = 10
             }
         }
     }
@@ -69,7 +79,9 @@ io.on("connection", function (socket) {
             socket.emit("moveInvalid")
     })
     socket.on('disconnect', function () {
-        socket.broadcast.to(myGame).emit("opponentResign")
+        if (games[myGame][0].boardOutcome == 0){
+        socket.broadcast.to(myGame).emit("opponentResign")}
+        games[myGame][2] = false
     })
 });
 
