@@ -20,9 +20,78 @@ let computerGame = false
 let singlePlayerButton
 let multiPlayerButton
 let computerGameButton
+let computersTurn = 0
 let newGameButton
 let resignButton
 let socket
+let copyTotal = 0
+let moveTotal = 0
+let spiralArray = [
+[4, 4],
+[3, 4],
+[3, 3],
+[4, 3],
+[5, 3],
+[5, 4 ],
+[5, 5],
+[4, 5],
+[3, 5],
+[2, 5],
+[2, 4],
+[2, 3],
+[2, 2],
+[3, 2],
+[4, 2],
+[5, 2],
+[6, 2],
+[6, 3],
+[6, 4],
+[6, 5],
+[6, 6],
+[5, 6],
+[4, 6],
+[3, 6],
+[2, 6],
+[1, 6],
+[1, 5],
+[1, 4],
+[1, 3 ],
+[1, 2],
+[1, 1],
+[2, 1],
+[3, 1],
+[4, 1],
+[5, 1],
+[6, 1],
+[7, 1],
+[7, 2],
+[7, 3],
+[7, 4],
+[7, 5],
+[7, 6],
+[7, 7 ],
+[6, 7],
+[5, 7],
+[4, 7],
+[3, 7 ],
+[2, 7 ],
+[1, 7 ],
+[0, 7],
+[0, 6],
+[0, 5],
+[0, 4],
+[0, 3],
+[0, 2],
+[0, 1],
+[0, 0],
+[1, 0],
+[2, 0],
+[3, 0],
+[4, 0 ],
+[5, 0 ],
+[6, 0 ],
+[7, 0]
+]
 
 async function setup() {
     let cnv = createCanvas(windowWidth, windowHeight)
@@ -74,18 +143,18 @@ function startMultiPlayerGame() {
     socket.on("colourAssign", function (colour) {
         myMPColour = colour;
     })
-    socket.on("Start Game", function(){
+    socket.on("Start Game", function () {
         multiPlayerGameStarted = true
     })
-    socket.on("makeMove", function (move){
+    socket.on("makeMove", function (move) {
         console.log("recieved move command:", move)
         mainGameBoard.move_piece(move[0], move[1], move[2])
     })
-    socket.on("moveInvalid", function(){
+    socket.on("moveInvalid", function () {
         console.log("An error has occured, as this move has been seen as invalid by the server")
     })
     socket.on("opponentResign", function () {
-        if (myMPColour == 0){
+        if (myMPColour == 0) {
             mainGameBoard.boardOutcome = 7
         }
         else {
@@ -155,7 +224,7 @@ function draw() {
 
         if (askPromotion == true) {
             let colourOffsetDown = 0
-            if (mainGameBoard.whitesTurn == 1 && singlePlayerGame == true || multiPlayerGame == true && myMPColour == 1) {
+            if (mainGameBoard.whitesTurn == 1 && (singlePlayerGame == true || computerGame == true) || multiPlayerGame == true && myMPColour == 1) {
                 colourOffsetDown = 169
             }
             fill(0, 0, 0, 128)
@@ -217,15 +286,15 @@ function draw() {
             text(winner, XOFFSET + 3 * SQSIZE, YOFFSET + 3 * SQSIZE)
             textSize(25)
             text(reason, XOFFSET + 2.5 * SQSIZE, YOFFSET + 3.5 * SQSIZE, 3 * SQSIZE)
-            if (multiPlayerGame == true){
+            if (multiPlayerGame == true) {
                 socket.disconnect()
             }
         }
 
-        if (multiPlayerGame == true){
+        if (multiPlayerGame == true) {
             textSize(100)
-            if (myMPColour == 0){
-                if (mainGameBoard.whitesTurn == 0){
+            if (myMPColour == 0) {
+                if (mainGameBoard.whitesTurn == 0) {
                     fill(0x8E, 0xAA, 0xDB)
                 }
                 else {
@@ -258,8 +327,26 @@ function draw() {
             }
         }
     }
-    else if (multiPlayerGame == true && multiPlayerGameStarted == false){
+    else if (multiPlayerGame == true && multiPlayerGameStarted == false) {
         text("waiting for opponent...", 0, 0)
+    }
+    if (computerGame && computersTurn == 2 && mainGameBoard.boardOutcome == 0){
+        copyTotal = 0
+        moveTotal = 0
+        let startTime = performance.now()
+        let depth = 2
+        let bestMove = negamax_engine(mainGameBoard, 0, 2)
+        let endTime = performance.now()
+        //console.log("Total time taken for clone: ", copyTotal, "milliseconds")
+
+        //console.log("Total time taken for move: ", moveTotal, "milliseconds")
+        //console.log("Negamax engine performance at depth ", depth, ":", endTime - startTime, "milliseconds")
+        //console.log(bestMove)
+        mainGameBoard.move_piece(bestMove[0], bestMove[1], bestMove[2])
+        computersTurn = 0
+    }
+    else if (computersTurn != 0){
+        computersTurn++
     }
 }
 
@@ -269,13 +356,13 @@ function mousePressed() {
         let tempBoardX = floor((mouseX - XOFFSET) / SQSIZE)
         let tempBoardY = floor((mouseY - YOFFSET) / SQSIZE)
         if (askPromotion == false && mainGameBoard.boardOutcome == 0) {
-            if (mainGameBoard.whitesTurn == 1 && singlePlayerGame == true || multiPlayerGame == true && myMPColour == 1) {
+            if (mainGameBoard.whitesTurn == 1 && (singlePlayerGame == true || computerGame == true) || multiPlayerGame == true && myMPColour == 1) {
                 tempBoardX = 7 - tempBoardX
                 tempBoardY = 7 - tempBoardY
             }
             if (tempBoardY >= 0 && tempBoardY < BOARDSIZE && tempBoardX >= 0 && tempBoardX < BOARDSIZE) {
                 let squaresToCheck
-                if (mainGameBoard.whitesTurn == 0 && singlePlayerGame == true || multiPlayerGame == true && myMPColour == 0) {
+                if (mainGameBoard.whitesTurn == 0 && (singlePlayerGame == true || computerGame == true) || multiPlayerGame == true && myMPColour == 0) {
                     squaresToCheck = mainGameBoard.whiteSWP
                 }
                 else {
@@ -301,7 +388,7 @@ function mouseReleased() {
         pieceDragged = false
         let tempBoardX = floor((mouseX - XOFFSET) / SQSIZE)
         let tempBoardY = floor((mouseY - YOFFSET) / SQSIZE)
-        if (mainGameBoard.whitesTurn == 1 && singlePlayerGame == true || multiPlayerGame == true && myMPColour == 1) {
+        if (mainGameBoard.whitesTurn == 1 && (singlePlayerGame == true || computerGame == true) || multiPlayerGame == true && myMPColour == 1) {
             tempBoardX = 7 - tempBoardX
             tempBoardY = 7 - tempBoardY
         }
@@ -310,10 +397,15 @@ function mouseReleased() {
             if (tempBoardY >= 0 && tempBoardY < BOARDSIZE && tempBoardX >= 0 && tempBoardX < BOARDSIZE && pieceSelected.length > 0 && !(tempBoardY == pieceSelected[BOARDROW] && tempBoardX == pieceSelected[BOARDCOLUMN])) {
 
                 pieceDropped = [tempBoardY, tempBoardX]
-                if (!(mainGameBoard.board[pieceSelected[BOARDROW]][pieceSelected[BOARDCOLUMN]][1] == 'P' && (tempBoardY == 0 || tempBoardY == 7))) {
+                if (!(mainGameBoard.board[pieceSelected[BOARDROW]][pieceSelected[BOARDCOLUMN]][1] == 'P' && ((tempBoardY == 0  && mainGameBoard.whitesTurn == 0) || (tempBoardY == 7 && mainGameBoard.whitesTurn == 1)))) {
+                    let turnBefore = mainGameBoard.whitesTurn
                     mainGameBoard.move_piece(pieceSelected, pieceDropped, 0)
-                    if (multiPlayerGame){
+                    let turnChanged = turnBefore != mainGameBoard.whitesTurn
+                    if (multiPlayerGame) {
                         socket.emit("makeMove", [pieceSelected, pieceDropped, 0])
+                    }
+                    if (computerGame && turnChanged) {
+                        computersTurn = 1;
                     }
                     pieceSelected = []
                 }
@@ -326,64 +418,104 @@ function mouseReleased() {
             if (tempBoardY == 3 || tempBoardY == 4) {
                 switch (tempBoardX) {
                     case 0: case 1:
-                        if (mainGameBoard.whitesTurn == 0 && singlePlayerGame == true || multiPlayerGame == true && myMPColour == 0) {
+                        if (mainGameBoard.whitesTurn == 0 && (singlePlayerGame == true || computerGame == true) || multiPlayerGame == true && myMPColour == 0) {
+                    let turnBefore = mainGameBoard.whitesTurn
                             mainGameBoard.move_piece(pieceSelected, pieceDropped, 'Q')
+                    let turnChanged = turnBefore != mainGameBoard.whitesTurn
                             if (multiPlayerGame) {
                                 socket.emit("makeMove", [pieceSelected, pieceDropped, 'Q'])
                             }
+                            if (computerGame && turnChanged) {
+                                computersTurn = 1;
+                            }
                         }
                         else {
+                    let turnBefore = mainGameBoard.whitesTurn
                             mainGameBoard.move_piece(pieceSelected, pieceDropped, 'R')
+                    let turnChanged = turnBefore != mainGameBoard.whitesTurn
                             if (multiPlayerGame) {
                                 socket.emit("makeMove", [pieceSelected, pieceDropped, 'R'])
+                            }
+                            if (computerGame && turnChanged) {
+                                computersTurn = 1;
                             }
                         }
                         askPromotion = false
                         pieceSelected = []
                         break;
                     case 2: case 3:
-                        if (mainGameBoard.whitesTurn == 0 && singlePlayerGame == true || multiPlayerGame == true && myMPColour == 0) {
+                        if (mainGameBoard.whitesTurn == 0 && (singlePlayerGame == true || computerGame == true) || multiPlayerGame == true && myMPColour == 0) {
+                    let turnBefore = mainGameBoard.whitesTurn
                             mainGameBoard.move_piece(pieceSelected, pieceDropped, 'B')
+                    let turnChanged = turnBefore != mainGameBoard.whitesTurn
                             if (multiPlayerGame) {
                                 socket.emit("makeMove", [pieceSelected, pieceDropped, 'B'])
                             }
+                            if (computerGame && turnChanged) {
+                                computersTurn = 1;
+                            }
                         }
                         else {
+                    let turnBefore = mainGameBoard.whitesTurn
                             mainGameBoard.move_piece(pieceSelected, pieceDropped, 'N')
+                    let turnChanged = turnBefore != mainGameBoard.whitesTurn
                             if (multiPlayerGame) {
                                 socket.emit("makeMove", [pieceSelected, pieceDropped, 'N'])
+                            }
+                            if (computerGame && turnChanged) {
+                                computersTurn = 1;
                             }
                         }
                         askPromotion = false
                         pieceSelected = []
                         break;
                     case 4: case 5:
-                        if (mainGameBoard.whitesTurn == 0 && singlePlayerGame == true || multiPlayerGame == true && myMPColour == 0) {
+                        if (mainGameBoard.whitesTurn == 0 && (singlePlayerGame == true || computerGame == true) || multiPlayerGame == true && myMPColour == 0) {
+                    let turnBefore = mainGameBoard.whitesTurn
                             mainGameBoard.move_piece(pieceSelected, pieceDropped, 'N')
+                    let turnChanged = turnBefore != mainGameBoard.whitesTurn
                             if (multiPlayerGame) {
                                 socket.emit("makeMove", [pieceSelected, pieceDropped, 'N'])
                             }
+                            if (computerGame && turnChanged) {
+                                computersTurn = 1;
+                            }
                         }
                         else {
+                    let turnBefore = mainGameBoard.whitesTurn
                             mainGameBoard.move_piece(pieceSelected, pieceDropped, 'B')
+                    let turnChanged = turnBefore != mainGameBoard.whitesTurn
                             if (multiPlayerGame) {
                                 socket.emit("makeMove", [pieceSelected, pieceDropped, 'B'])
+                            }
+                            if (computerGame && turnChanged) {
+                                computersTurn = 1;
                             }
                         }
                         askPromotion = false
                         pieceSelected = []
                         break;
                     case 6: case 7:
-                        if (mainGameBoard.whitesTurn == 0 && singlePlayerGame == true || multiPlayerGame == true && myMPColour == 0) {
+                        if (mainGameBoard.whitesTurn == 0 && (singlePlayerGame == true || computerGame == true) || multiPlayerGame == true && myMPColour == 0) {
+                    let turnBefore = mainGameBoard.whitesTurn
                             mainGameBoard.move_piece(pieceSelected, pieceDropped, 'R')
+                    let turnChanged = turnBefore != mainGameBoard.whitesTurn
                             if (multiPlayerGame) {
                                 socket.emit("makeMove", [pieceSelected, pieceDropped, 'R'])
                             }
+                            if (computerGame && turnChanged) {
+                                computersTurn = 1;
+                            }
                         }
                         else {
+                    let turnBefore = mainGameBoard.whitesTurn
                             mainGameBoard.move_piece(pieceSelected, pieceDropped, 'Q')
+                    let turnChanged = turnBefore != mainGameBoard.whitesTurn
                             if (multiPlayerGame) {
                                 socket.emit("makeMove", [pieceSelected, pieceDropped, 'Q'])
+                            }
+                            if (computerGame && turnChanged) {
+                                computersTurn = 1;
                             }
                         }
                         askPromotion = false
@@ -422,7 +554,7 @@ function draw_pieces_options_and_selected_square() {
                 stroke('red')
                 strokeWeight(3)
                 //draw a red rectangle
-                if (mainGameBoard.whitesTurn == 0 && singlePlayerGame == true || multiPlayerGame == true && myMPColour == 0) {
+                if (mainGameBoard.whitesTurn == 0 && singlePlayerGame == true || computerGame == true || multiPlayerGame == true && myMPColour == 0) {
                     rect(XOFFSET + pieceSelected[BOARDCOLUMN] * SQSIZE, YOFFSET + pieceSelected[BOARDROW] * SQSIZE, SQSIZE, SQSIZE)
                 }
                 else {
@@ -462,7 +594,7 @@ function draw_pieces_options_and_selected_square() {
                 //if the piece isnt selected or being dragged
                 if (!pieceSelectedTrue || !pieceDragged) {
                     //draw the piece on the board
-                    if (mainGameBoard.whitesTurn == 0 && singlePlayerGame == true || multiPlayerGame == true && myMPColour == 0) {
+                    if (mainGameBoard.whitesTurn == 0 && singlePlayerGame == true || computerGame == true || multiPlayerGame == true && myMPColour == 0) {
                         image(chessSpriteSheet, XOFFSET + column * SQSIZE, YOFFSET + row * SQSIZE, SQSIZE, SQSIZE, (pieceOfsettAcross * 169) - 16, colourOffsetDown, 169, 136)
                     }
                     else {
@@ -510,6 +642,104 @@ function draw_pieces_options_and_selected_square() {
     if (squareBeingDragged) {
         image(chessSpriteSheet, mouseX - SQSIZE / 2, mouseY - SQSIZE / 2, SQSIZE, SQSIZE, (draggedPieceOffset * 169) - 16, draggedColourOffset, 169, 136)
     }
+}
+
+function negamax_engine(boardObject, depth, maxDepth, opponentsBest) {
+    let thisPositionEval = -100000 //definitely a game over for white
+    let bestMove
+    let fromCentreArray = []
+    for (const centreSquare of spiralArray){
+        for(const movesIndex in boardObject.movesTable){
+            if (squares_are_equal(boardObject.movesTable[movesIndex][0], centreSquare)){
+                fromCentreArray.push(movesIndex)
+            }
+        }
+    }
+    //for (const moves of boardObject.movesTable) {
+    for (const fromCentreArrayIndex of fromCentreArray) {
+        const moves = boardObject.movesTable[fromCentreArrayIndex]
+        for (const moveArray of moves[1]) {
+            if (boardObject.board[moves[0][0]][moves[0][1]].length == 0){
+                break;
+            }
+            if (!(boardObject.board[moves[0][0]][moves[0][1]][0] == "b" && depth % 2 == 0 || 
+                boardObject.board[moves[0][0]][moves[0][1]][0] == "w" && depth % 2 == 1 )){
+                //console.log("rejected")
+                break;
+            }
+            if (moveArray.length == 0) {
+                continue; //skip this iteration of the for loop
+            }
+            for (const move of moveArray){
+                if (move.length == 0) {
+                    continue; //skip this iteration of the for loop
+                }
+                let promotionOptions
+                if (boardObject.board[moves[0][BOARDROW]][moves[0][BOARDCOLUMN]][1] == 'P' && ((move[0] == 0 && boardObject.whitesTurn == 0) || (move[0] == 7 && boardObject.whitesTurn == 1))){
+                    promotionOptions = ["Q", "R", "B", "N"]
+                }
+                else{
+                    promotionOptions = [0]
+                }
+                for (const promo of promotionOptions){
+                    let startTime = performance.now()
+                    let deeperBoard = new Board(structuredClone(boardObject.board))
+                    deeperBoard.whitesTurn = boardObject.whitesTurn
+                    deeperBoard.whiteSWP = structuredClone(boardObject.whiteSWP)
+                    deeperBoard.blackSWP = structuredClone(boardObject.blackSWP)
+                    deeperBoard.movesTable = structuredClone(boardObject.movesTable)
+                    deeperBoard.noKingSafetyMovesTable = structuredClone(boardObject.noKingSafetyMovesTable)
+                    deeperBoard.squareOfKings = structuredClone(boardObject.squareOfKings)
+                    deeperBoard.potentialPassantTakers = boardObject.potentialPassantTakers
+                    deeperBoard.passantSquare = structuredClone(boardObject.passantSquare)
+                    deeperBoard.passantHappening = boardObject.passantHappening
+                    deeperBoard.pieceEval = boardObject.pieceEval
+                    deeperBoard.mobilityAdvantageEval = boardObject.mobilityAdvantageEval
+                    deeperBoard.WKMoved = boardObject.WKMoved
+                    deeperBoard.BKMoved = boardObject.BKMoved
+                    deeperBoard.WLRMoved = boardObject.WLRMoved
+                    deeperBoard.WRRMoved = boardObject.WRRMoved
+                    deeperBoard.BLRMoved = boardObject.BLRMoved
+                    deeperBoard.BRRMoved = boardObject.BRRMoved
+                    deeperBoard.boardOutcome = boardObject.boardOutcome
+                    deeperBoard.fiftyMoveTally = boardObject.fiftyMoveTally
+                    let endTime = performance.now()
+                    copyTotal += endTime-startTime
+                    startTime = performance.now()
+                    deeperBoard.move_piece(moves[0], move, promo)
+                    endTime = performance.now()
+                    moveTotal += endTime-startTime
+                    let evalOfMove
+                    if (depth < maxDepth && deeperBoard.boardOutcome == 0) {
+                        evalOfMove = negamax_engine(deeperBoard, depth + 1, maxDepth, -thisPositionEval)
+                    }
+                    else {
+                        evalOfMove = (deeperBoard.pieceEval + 0.01 * deeperBoard.mobilityAdvantageEval)*(33-deeperBoard.movesTable.length)
+                        if (deeperBoard.boardOutcome != 0){
+                        }
+                    }
+                    if (boardObject.whitesTurn == 1)
+                        evalOfMove = -evalOfMove
+                    if (thisPositionEval < evalOfMove) {
+                        thisPositionEval = evalOfMove
+                        bestMove = [moves[0], move, promo]
+                    }
+                    if (opponentsBest < evalOfMove){
+                        if (depth != 0)
+                            if (boardObject.whitesTurn == 1)
+                                return -thisPositionEval
+                            return thisPositionEval
+                    }}
+            }
+        }
+    }
+
+    if (depth == 0) {
+        return bestMove
+    }
+    if (boardObject.whitesTurn == 1)
+        return -thisPositionEval
+    return thisPositionEval
 }
 
 const pawnRelatives = [
@@ -687,6 +917,7 @@ class Board {
             [7, 5],
             [7, 6],
             [7, 7]] //all of the white squares with pieces on the first turn
+        this.mobilityAdvantageEval = 0
         this.blackSWP = [
             [0, 0],
             [0, 1],
@@ -902,6 +1133,7 @@ class Board {
         this.potentialPassantTakers = []
         this.passantSquare = [-1, -1] //passant square out of bounds because there isn't one yet
         this.passantHappening = false
+        this.pieceEval = 0
         this.WKMoved = false;
         this.BKMoved = false;
         this.WLRMoved = false;
@@ -958,11 +1190,34 @@ class Board {
                 let SWPArray
                 this.fiftyMoveTally = -1
                 this.boardHistory = []
+                let pieceValue = 0
+                switch (this.board[finishingSquare[BOARDROW]][finishingSquare[BOARDCOLUMN]][1]) {
+                    case 'P':
+                        pieceValue = 1
+                        break;
+                    case 'N':
+                        pieceValue = 3
+                        break;
+                    case 'B':
+                        pieceValue = 3
+                        break;
+                    case 'R':
+                        pieceValue = 5
+                        break;
+                    case 'Q':
+                        pieceValue = 9
+                        break;
+                    case 'K':
+                        pieceValue = 200
+                        break;
+                }
                 if (this.whitesTurn == 0) {
                     SWPArray = this.blackSWP
+                    this.pieceEval += pieceValue
                 }
                 else {
                     SWPArray = this.whiteSWP
+                    this.pieceEval -= pieceValue
                 }
                 for (const pieceIndex in SWPArray) {
                     const piece = SWPArray[pieceIndex]
@@ -1193,8 +1448,13 @@ class Board {
             for (let moves of this.noKingSafetyMovesTable) {
                 if (moves[0][BOARDROW] == lineAffected[SQUAREFROM][BOARDROW] && moves[0][BOARDCOLUMN] == lineAffected[SQUAREFROM][BOARDCOLUMN]) {
                     let relativeLine = relative_moves_of_piece(this.board[moves[0][BOARDROW]][moves[0][BOARDCOLUMN]][1])[lineAffected[DIRECTION]]
-
+                    let numMovesBefore = moves[1][lineAffected[DIRECTION]].length
                     moves[1][lineAffected[DIRECTION]] = this.make_new_move_line(lineAffected[SQUAREFROM], relativeLine, lineAffected[DIRECTION])
+                    if (this.board[moves[0][BOARDROW]][moves[0][BOARDCOLUMN]][0] == "w"){
+                    this.mobilityAdvantageEval += moves[1][lineAffected[DIRECTION]].length - numMovesBefore}
+                    else{
+                        this.mobilityAdvantageEval -= moves[1][lineAffected[DIRECTION]].length - numMovesBefore
+                    }
                     break;
                 }
             }
@@ -1206,10 +1466,23 @@ class Board {
                 moves[0] = finishingSquare
                 let relativePieceMoves = relative_moves_of_piece(this.board[finishingSquare[BOARDROW]][finishingSquare[BOARDCOLUMN]][1])
                 moves[1] = []
+                let numMovesBefore = 0
+                for(const move of moves[1]){
+                    numMovesBefore += move.length
+                }
                 for (let direction in relativePieceMoves) {
                     let relativeLine = relativePieceMoves[direction]
                     let linesInMoveTable = this.make_new_move_line(finishingSquare, relativeLine, direction)
                     moves[1].push(linesInMoveTable)
+                }
+                let numMovesAfter = 0
+                for (const move of moves[1]) {
+                    numMovesAfter += move.length
+                }
+                if (this.board[finishingSquare[BOARDROW]][finishingSquare[BOARDCOLUMN]][0] == "w"){
+                this.mobilityAdvantageEval += numMovesAfter - numMovesBefore}
+                else {
+                    this.mobilityAdvantageEval -= numMovesAfter - numMovesBefore
                 }
                 break;
             }
@@ -1390,11 +1663,13 @@ class Board {
         if (noMovesLeft) {
             if (inCheck) {
                 if (this.whitesTurn) {
-                    console.log("white loses, checkmate")
+                    //console.log("white loses, checkmate")
+                    this.pieceEval = -1000
                     this.boardOutcome = 1
                 }
                 else {
-                    console.log("black loses, checkmate")
+                    //console.log("black loses, checkmate")
+                    this.pieceEval = 1000
                     this.boardOutcome = 2
                 }
             }
